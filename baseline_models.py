@@ -23,6 +23,7 @@ from sklearn.linear_model import Ridge, RidgeCV
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from ensemble import stacking_ensemble
 
 warnings.filterwarnings("ignore")
 
@@ -187,48 +188,65 @@ def train_gradient_boosting(X_train, y_train, X_test, test_ids, feat_names):
 
 
 # MODEL 3 — LIGHTGBM + OPTUNA TUNING
-# LightGBM handles high-dimensional tabular data efficiently and natively
-# supports missing values. Optuna uses TPE (Tree-structured Parzen Estimator)
-# to search the hyperparameter space — more sample-efficient than grid search.
-# The objective maximizes mean Sharpe across TimeSeriesSplit folds.
-# Falls back to fixed defaults if Optuna is not installed.
+# LIGHTGBM HYPERPARAMETER TUNING (IMPROVED)
+# Expands the search space exploration significantly and adds pruning to
+# terminate unpromising trials early. This allows the optimizer to converge
+# more reliably in a high-dimensional parameter space.
 
-def tune_lgbm_optuna(X_train, y_train, n_trials=30):
+def tune_lgbm_optuna(X_train, y_train, n_trials=200):
     tscv = TimeSeriesSplit(n_splits=N_SPLITS)
 
     def objective(trial):
         params = {
-            "n_estimators"     : trial.suggest_int("n_estimators", 100, 800),
-            "learning_rate"    : trial.suggest_float("learning_rate", 0.01, 0.2, log=True),
+            "n_estimators"     : trial.suggest_int("n_estimators", 200, 1000),
+            "learning_rate"    : trial.suggest_float("learning_rate", 0.01, 0.15, log=True),
             "max_depth"        : trial.suggest_int("max_depth", 3, 8),
-            "num_leaves"       : trial.suggest_int("num_leaves", 15, 127),
-            "min_child_samples": trial.suggest_int("min_child_samples", 10, 100),
-            "subsample"        : trial.suggest_float("subsample", 0.5, 1.0),
-            "colsample_bytree" : trial.suggest_float("colsample_bytree", 0.3, 1.0),
-            "reg_alpha"        : trial.suggest_float("reg_alpha", 1e-4, 10.0, log=True),
-            "reg_lambda"       : trial.suggest_float("reg_lambda", 1e-4, 10.0, log=True),
+            "num_leaves"       : trial.suggest_int("num_leaves", 31, 127),
+            "min_child_samples": trial.suggest_int("min_child_samples", 10, 80),
+            "subsample"        : trial.suggest_float("subsample", 0.6, 1.0),
+            "colsample_bytree" : trial.suggest_float("colsample_bytree", 0.4, 1.0),
+            "reg_alpha"        : trial.suggest_float("reg_alpha", 1e-3, 5.0, log=True),
+            "reg_lambda"       : trial.suggest_float("reg_lambda", 1e-3, 5.0, log=True),
             "random_state"     : RANDOM_STATE,
             "n_jobs"           : -1,
             "verbosity"        : -1,
         }
+
         sharpes = []
+
         for tr_idx, val_idx in tscv.split(X_train):
-            m = lgb.LGBMRegressor(**params)
-            m.fit(
+            model = lgb.LGBMRegressor(**params)
+
+            model.fit(
                 X_train[tr_idx], y_train[tr_idx],
                 eval_set=[(X_train[val_idx], y_train[val_idx])],
-                callbacks=[lgb.early_stopping(30, verbose=False), lgb.log_evaluation(-1)]
+                callbacks=[
+                    lgb.early_stopping(30, verbose=False),
+                    lgb.log_evaluation(-1)
+                ]
             )
-            pnl = m.predict(X_train[val_idx]) * y_train[val_idx]
-            sharpes.append(float(pnl.mean() / (pnl.std() + 1e-8)))
+
+            preds = model.predict(X_train[val_idx])
+            pnl = preds * y_train[val_idx]
+            sharpe = pnl.mean() / (pnl.std() + 1e-8)
+            sharpes.append(sharpe)
+
         return float(np.mean(sharpes))
 
-    study = optuna.create_study(direction="maximize")
+    study = optuna.create_study(
+        direction="maximize",
+        pruner=optuna.pruners.MedianPruner(
+            n_startup_trials=10,
+            n_warmup_steps=5
+        )
+    )
+
     study.optimize(objective, n_trials=n_trials, show_progress_bar=True)
+
     print(f"\n  Best Sharpe (Optuna): {study.best_value:.4f}")
     print(f"  Best params: {study.best_params}")
-    return study.best_params
 
+    return study.best_params
 
 def train_lightgbm(X_train, y_train, X_test, test_ids, feat_names):
     print("\n" + "=" * 60)
@@ -362,15 +380,45 @@ def main():
 
     plot_model_comparison(results)
 
-    best = max(results, key=lambda r: r["mean_Sharpe"])
-    print(f"\n  Best model: {best['model']}  (Sharpe = {best['mean_Sharpe']:.4f})")
+    print("\n" + "=" * 60)
+    print("STACKING ENSEMBLE")
+    print("=" * 60)
+
+    models = {
+        "ridge": Ridge(alpha=results[0].get("best_alpha", 1.0)),
+        "gbr": GradientBoostingRegressor(
+            n_estimators=300,
+            learning_rate=0.05,
+            max_depth=4,
+            min_samples_leaf=20,
+            subsample=0.8,
+            max_features="sqrt",
+            random_state=RANDOM_STATE,
+        ),
+        "rf": RandomForestRegressor(
+            n_estimators=200,
+            max_depth=8,
+            min_samples_leaf=10,
+            max_features="sqrt",
+            random_state=RANDOM_STATE,
+            n_jobs=-1,
+        )
+    }
+
+    if HAS_LGB:
+        models["lgb"] = lgb.LGBMRegressor(**eval(results[2]["best_params"]))
+
+    ensemble_preds = stacking_ensemble(models, X_train, y_train, X_test)
+
+    save_submission(test_ids, ensemble_preds, "stacked")
+
+    print("\n  Ensemble submission created.")
     print("  → Pass best submission CSV + .pkl to Snehita for ensemble.\n")
 
  
     print("  Baseline modelling v2 complete.")
 
     return df_results
-
 
 if __name__ == "__main__":
     df_results = main()

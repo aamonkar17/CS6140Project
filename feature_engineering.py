@@ -12,6 +12,7 @@ import warnings
 import numpy as np
 import pandas as pd
 from scipy.stats import skew
+import lightgbm as lgb
 
 warnings.filterwarnings("ignore")
 
@@ -293,33 +294,47 @@ def block_polynomial(df):
     return df
 
 
-# BLOCK 9 — FEATURE SELECTION
-# Removes near-zero variance features (essentially constant columns) and
-# features with absolute correlation below min_corr with the target.
-# Thresholds are determined on train and applied identically to test.
-# This step is critical — without it, most engineered features add noise
-# rather than signal, as seen when Lasso selected only 1 of 183 features.
+# BLOCK 9 — LIGHTGBM-BASED FEATURE SELECTION
+# Uses a tree-based model to identify the most predictive features rather than
+# relying on simple correlation. This captures nonlinear relationships and
+# feature interactions, which are common in financial data. Instead of removing
+# features based on weak individual correlation, we keep the top N features
+# ranked by model importance. This dramatically reduces noise while preserving
+# useful signal combinations.
 
-def block_feature_selection(train, test, min_corr=0.005, min_var=1e-6):
-    protected = [c for c in ID_COLS + [TARGET_COL] + LEAKAGE if c in train.columns]
-    feat_cols = [c for c in train.columns if c not in protected]
+def block_feature_selection(train, test, top_n=100):
+    print("  [9] LightGBM feature selection")
 
-    variances = train[feat_cols].var()
-    low_var   = variances[variances < min_var].index.tolist()
+    # Separate features and target
+    X = train.drop(columns=[TARGET_COL])
+    y = train[TARGET_COL]
 
-    low_corr = []
-    if TARGET_COL in train.columns:
-        corrs    = train[feat_cols].corrwith(train[TARGET_COL]).abs()
-        low_corr = corrs[corrs < min_corr].index.tolist()
+    # Train a lightweight model for feature importance estimation
+    model = lgb.LGBMRegressor(
+        n_estimators=300,
+        random_state=42,
+        n_jobs=-1,
+        verbosity=-1
+    )
+    model.fit(X, y)
 
-    drop_cols = [c for c in set(low_var + low_corr) if c not in protected]
-    train = train.drop(columns=drop_cols)
-    test  = test.drop(columns=[c for c in drop_cols if c in test.columns])
+    # Rank features by importance
+    importances = model.feature_importances_
+    feat_names = X.columns
 
-    print(f"  [9] Feature selection:")
-    print(f"      Dropped {len(low_var)} near-zero variance cols")
-    print(f"      Dropped {len(low_corr)} low-corr cols (|r| < {min_corr})")
-    print(f"      Remaining: {train.shape[1]} cols")
+    imp_df = pd.DataFrame({
+        "feature": feat_names,
+        "importance": importances
+    }).sort_values("importance", ascending=False)
+
+    top_features = imp_df.head(top_n)["feature"].tolist()
+
+    print(f"      Keeping top {top_n} features (model-based importance)")
+
+    # Apply selection
+    train = train[top_features + [TARGET_COL]]
+    test  = test[[c for c in top_features if c in test.columns]]
+
     return train, test
 
 
