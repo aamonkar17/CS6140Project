@@ -1,13 +1,10 @@
 """
 CS 6140 - Hull Tactical Market Prediction
-Feature Engineering Script — v2  (Aasav Suthar)
+Feature Engineering Script — v2 
 
-Reads preprocessed train/test from Ankit's pipeline and builds a richer
+Reads preprocessed train/test from pipelines and builds a richer
 feature space before modelling. Nine feature blocks are applied in sequence,
 followed by a correlation-based selection step to remove noise.
-
-Input  : outputs/train_preprocessed.csv, outputs/test_preprocessed.csv
-Output : outputs/train_features.csv, outputs/test_features.csv
 """
 
 import os

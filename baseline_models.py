@@ -1,16 +1,10 @@
 """
 CS 6140 - Hull Tactical Market Prediction
-Baseline Models Script — v2  (Aasav Suthar)
+Baseline Models Script — v2  
 
 Trains four models on the engineered feature set, evaluates each using
 TimeSeriesSplit cross-validation, and outputs Kaggle-ready submission files.
 LightGBM is tuned via Optuna; remaining models use fixed or CV-selected params.
-
-Input  : outputs/train_features.csv, outputs/test_features.csv
-Output : outputs/predictions/submission_<model>.csv
-         outputs/model_results_summary_v2.csv
-         outputs/figures/model_comparison_v2.png
-         outputs/figures/feature_importance_<model>.png
 
 Models : Ridge, Gradient Boosting, LightGBM (+ Optuna), Random Forest
 Metric : Sharpe Ratio via TimeSeriesSplit(5) — no temporal data leakage
@@ -345,7 +339,7 @@ def plot_model_comparison(results):
 
 def main():
     print("\n" + "█" * 70)
-    print("  CS 6140 — Hull Tactical  |  Baseline Models v2  (Aasav Suthar)")
+    print("  Hull Tactical  |  Baseline Models v2  ")
     print("█" * 70 + "\n")
 
     train, test = load_features()
@@ -372,9 +366,8 @@ def main():
     print(f"\n  Best model: {best['model']}  (Sharpe = {best['mean_Sharpe']:.4f})")
     print("  → Pass best submission CSV + .pkl to Snehita for ensemble.\n")
 
-    print("█" * 70)
+ 
     print("  Baseline modelling v2 complete.")
-    print("█" * 70 + "\n")
 
     return df_results
 
