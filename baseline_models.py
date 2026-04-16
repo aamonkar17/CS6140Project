@@ -2,8 +2,8 @@
 CS 6140 - Hull Tactical Market Prediction
 Baseline Models Script — v2  
 
-Trains four models on the engineered feature set, evaluates each using
-TimeSeriesSplit cross-validation, and outputs Kaggle-ready submission files.
+Trains the four models on the engineered feature set, evaluation for each model using
+TimeSeriesSplit cross-validation.
 LightGBM is tuned via Optuna; remaining models use fixed or CV-selected params.
 
 Models : Ridge, Gradient Boosting, LightGBM (+ Optuna), Random Forest
@@ -55,7 +55,7 @@ N_SPLITS     = 5
 RANDOM_STATE = 42
 
 
-# HELPERS
+# HELPER FUNCTIONS
 
 def sharpe_ratio(y_true, y_pred):
     # competition metric: predictions treated as position sizes, PnL = pred × actual
@@ -128,7 +128,7 @@ def save_submission(test_ids, preds, model_name):
     print(f"  Submission saved → {path}")
 
 
-# MODEL 1 — RIDGE REGRESSION
+#  1 — RIDGE REGRESSION
 # Serves as a regularized linear baseline. With 300+ features, a high alpha
 # is necessary to prevent numerical instability. RidgeCV selects the optimal
 # alpha via internal cross-validation over a log-spaced grid.
@@ -159,7 +159,7 @@ def train_ridge(X_train, y_train, X_test, test_ids, feat_names):
     return summary
 
 
-# MODEL 2 — GRADIENT BOOSTING REGRESSOR
+#  2 — GRADIENT BOOSTING REGRESSOR
 # Non-linear baseline using sklearn's GBM — no additional dependencies required.
 # Shallow trees with subsampling provide sufficient regularization for this
 # dataset size (~9k rows). Learning rate is kept low for stable convergence.
@@ -186,8 +186,8 @@ def train_gradient_boosting(X_train, y_train, X_test, test_ids, feat_names):
     return summary
 
 
-# MODEL 3 — LIGHTGBM + OPTUNA TUNING
-# LightGBM handles high-dimensional tabular data efficiently and natively
+#  3 — LIGHTGBM + OPTUNA TUNING
+# LightGBM handles the high-dimensional tabular data efficiently and natively
 # supports missing values. Optuna uses TPE (Tree-structured Parzen Estimator)
 # to search the hyperparameter space — more sample-efficient than grid search.
 # The objective maximizes mean Sharpe across TimeSeriesSplit folds.
@@ -262,7 +262,7 @@ def train_lightgbm(X_train, y_train, X_test, test_ids, feat_names):
     return summary
 
 
-# MODEL 4 — RANDOM FOREST
+#  4 — RANDOM FOREST
 # Fixed hyperparameters rather than a tuning run — RandomizedSearch on this
 # feature count is slow and marginal gains over conservative defaults are small.
 # max_depth=8 and min_samples_leaf=10 prevent overfitting at ~9k training rows.

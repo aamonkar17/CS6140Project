@@ -222,9 +222,9 @@ def block_cross_family(df):
 
 
 # BLOCK 7 — ROLLING AND LAG FEATURES
-# Builds momentum and mean-reversion signals over windows of 3, 5, and 10
-# periods. Applied to aggregate signals only to keep dimensionality manageable.
-# mom{w} = current value minus rolling mean (deviation from recent trend).
+# Builds the momentum and mean-reversion signals over windows of 3, 5, and 10
+# periods. Applied to aggregate signals only to keep dimensionality manageable 
+# during the procedure. mom{w} = current value minus rolling mean.
 # rz{w}  = that deviation normalized by rolling std (z-score in window).
 # mom_cross = short MA minus long MA, a standard momentum crossover signal.
 # Data is sorted by date_id before rolling to preserve temporal ordering.
@@ -269,9 +269,8 @@ def block_rolling(df, is_train=True):
 
 
 # BLOCK 8 — POLYNOMIAL FEATURES
-# Squares and cubics applied selectively to the most informative signals.
-# Cubic terms capture asymmetric response (e.g. large positive vs large
-# negative signals behaving differently). Applied only to vol-adjusted
+# Squares and cubics are applied selectively to the most informative signals.
+# Cubic terms capture asymmetric response. Applied only to vol-adjusted
 # and regime signals where non-linearity is most likely to be meaningful.
 
 POLY_TARGETS = [
@@ -324,7 +323,7 @@ def block_feature_selection(train, test, min_corr=0.005, min_var=1e-6):
 
 
 # ALIGNMENT
-# Ensures train and test share the same feature columns after all blocks.
+# It Ensures the training and testing share the same feature columns after the each block.
 # Any feature column present in train but missing from test is filled with 0.
 
 def cleanup_and_align(train, test):
