@@ -242,6 +242,28 @@ def train_xgboost(X_train, y_train, X_test, test_ids, feat_names):
 #   4. Huber loss — robust to outliers common in financial returns
 #   5. Gradient clipping (clipnorm=1.0) — prevents exploding gradients
 
+def plot_lstm_loss_curves(fold_histories):
+    """
+    Plots train vs validation loss curves for each CV fold.
+    Useful for bias-variance analysis — diverging curves indicate overfitting,
+    both curves high indicate underfitting.
+    """
+    fig, axes = plt.subplots(1, N_SPLITS, figsize=(18, 4))
+    for i, hist in enumerate(fold_histories):
+        axes[i].plot(hist["loss"],     label="Train Loss", color="#3498db")
+        axes[i].plot(hist["val_loss"], label="Val Loss",   color="#e74c3c")
+        axes[i].set_title(f"Fold {i+1}", fontweight="bold")
+        axes[i].set_xlabel("Epoch")
+        axes[i].set_ylabel("Huber Loss")
+        axes[i].legend(fontsize=8)
+    plt.suptitle("LSTM Training vs Validation Loss — All Folds",
+                 fontsize=13, fontweight="bold")
+    plt.tight_layout()
+    path = os.path.join(FIGURES_DIR, "lstm_loss_curves.png")
+    plt.savefig(path, dpi=150, bbox_inches="tight")
+    plt.close()
+    print(f"  LSTM loss curves saved → {path}")
+
 def build_sequences(X, y, seq_len):
     Xs, ys = [], []
     for i in range(len(X)):
@@ -293,6 +315,7 @@ def train_lstm(X_train, y_train, X_test, test_ids):
     tscv         = TimeSeriesSplit(n_splits=N_SPLITS)
     fold_results = []
     oof_preds    = np.zeros(len(y_train))
+    fold_histories = []  # store loss curves for plotting
 
     callbacks = [
         EarlyStopping(monitor="val_loss", patience=15,
@@ -308,7 +331,7 @@ def train_lstm(X_train, y_train, X_test, test_ids):
         print(f"  Fold {fold}/{N_SPLITS} ...", end=" ", flush=True)
 
         model = build_lstm_model(SEQUENCE_LEN, X_train.shape[1])
-        model.fit(
+        history = model.fit(
             X_seq[tr_idx], y_seq[tr_idx],
             validation_data=(X_seq[val_idx], y_seq[val_idx]),
             epochs=150,
@@ -316,6 +339,7 @@ def train_lstm(X_train, y_train, X_test, test_ids):
             callbacks=callbacks,
             verbose=0
         )
+        fold_histories.append(history.history)  # save loss history
 
         preds_sc = model.predict(X_seq[val_idx], verbose=0).flatten()
         preds    = tgt_scaler.inverse_transform(preds_sc.reshape(-1, 1)).flatten()
@@ -325,6 +349,9 @@ def train_lstm(X_train, y_train, X_test, test_ids):
         m["fold"] = fold
         fold_results.append(m)
         print(f"Sharpe={m['Sharpe']:.4f}  RMSE={m['RMSE']:.6f}")
+
+    # Plot loss curves for all folds
+    plot_lstm_loss_curves(fold_histories)
 
     df = pd.DataFrame(fold_results)
     summary = {
