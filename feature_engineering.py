@@ -343,6 +343,8 @@ def block_feature_selection(train, test, top_n=100):
 # Any feature column present in train but missing from test is filled with 0.
 
 def cleanup_and_align(train, test):
+    train = train.fillna(0)
+    test = test.fillna(0)
     for col in LEAKAGE:
         if col in train.columns: train = train.drop(columns=[col])
         if col in test.columns:  test  = test.drop(columns=[col])
@@ -389,7 +391,7 @@ def main():
     train = block_rolling(train, is_train=True)
     test  = block_rolling(test,  is_train=False)
 
-    train, test = block_feature_selection(train, test, min_corr=0.005, min_var=1e-6)
+    train, test = block_feature_selection(train, test, top_n=100)
     train, test = cleanup_and_align(train, test)
 
     train.to_csv(os.path.join(OUTPUT_DIR, "train_features.csv"), index=False)
