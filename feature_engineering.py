@@ -4,7 +4,7 @@ Feature Engineering Script — v2
 
 Reads preprocessed train/test from pipelines and builds a richer
 feature space before modelling. Nine feature blocks are applied in sequence,
-followed by a correlation-based selection step to remove noise.
+followed by a LightGBM importance-based selection step to remove noise.
 """
 
 import os
@@ -301,26 +301,27 @@ def block_polynomial(df):
 # ranked by model importance. This dramatically reduces noise while preserving
 # useful signal combinations.
 
-def block_feature_selection(train, test, min_corr=0.005, min_var=1e-6):
-    protected = [c for c in ID_COLS + [TARGET_COL] + LEAKAGE if c in train.columns]
-    feat_cols = [c for c in train.columns if c not in protected]
-
-    variances = train[feat_cols].var()
-    low_var   = variances[variances < min_var].index.tolist()
-
-    low_corr = []
-    if TARGET_COL in train.columns:
-        corrs    = train[feat_cols].corrwith(train[TARGET_COL]).abs()
-        low_corr = corrs[corrs < min_corr].index.tolist()
-
-    drop_cols = [c for c in set(low_var + low_corr) if c not in protected]
-    train = train.drop(columns=drop_cols)
-    test  = test.drop(columns=[c for c in drop_cols if c in test.columns])
-
-    print(f"  [9] Feature selection:")
-    print(f"      Dropped {len(low_var)} near-zero variance cols")
-    print(f"      Dropped {len(low_corr)} low-corr cols (|r| < {min_corr})")
-    print(f"      Remaining: {train.shape[1]} cols")
+def block_feature_selection(train, test, top_n=100):
+    print("  [9] LightGBM feature selection")
+    X = train.drop(columns=[TARGET_COL])
+    y = train[TARGET_COL]
+    model = lgb.LGBMRegressor(
+        n_estimators=300,
+        random_state=42,
+        n_jobs=-1,
+        verbosity=-1
+    )
+    model.fit(X, y)
+    importances = model.feature_importances_
+    feat_names = X.columns
+    imp_df = pd.DataFrame({
+        "feature": feat_names,
+        "importance": importances
+    }).sort_values("importance", ascending=False)
+    top_features = imp_df.head(top_n)["feature"].tolist()
+    print(f"      Keeping top {top_n} features (model-based importance)")
+    train = train[top_features + [TARGET_COL]]
+    test  = test[[c for c in top_features if c in test.columns]]
     return train, test
 
 
@@ -377,7 +378,7 @@ def main():
     train = block_rolling(train, is_train=True)
     test  = block_rolling(test,  is_train=False)
 
-    train, test = block_feature_selection(train, test, min_corr=0.005, min_var=1e-6)
+    train, test = block_feature_selection(train, test, top_n=100)
     train, test = cleanup_and_align(train, test)
 
     train.to_csv(os.path.join(OUTPUT_DIR, "train_features.csv"), index=False)
