@@ -1,6 +1,6 @@
 """
 CS 6140 - Hull Tactical Market Prediction
-Feature Engineering Script — v2 
+Feature Engineering Script — Group 15 
 
 Reads preprocessed train/test from pipelines and builds a richer
 feature space before modelling. Nine feature blocks are applied in sequence,
@@ -35,7 +35,6 @@ PREFIXES = {
     "S": list(range(1, 13)),
     "V": list(range(1, 14)),
 }
-
 
 # HELPERS
 
