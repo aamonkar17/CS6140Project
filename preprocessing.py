@@ -339,18 +339,30 @@ def plot_correlation_matrix(train: pd.DataFrame, feature_cols: list,
     full-dataset heatmap with 100+ features is basically unreadable anyway.
     """
     cols = [c for c in feature_cols if c in train.columns]
-    if target in train.columns:
-        corr_with_target = (
-            train[cols + [target]]
-            .corr()[target]
-            .drop(target)
-            .abs()
-            .sort_values(ascending=False)
-        )
-        selected = corr_with_target.head(top_n).index.tolist() + [target]
-    else:
-        selected = cols[:top_n]
 
+    if target not in train.columns:
+        print(f"  Skipping correlation matrix: target '{target}' not found")
+        return
+
+    if len(cols) < 2:
+        print("  Skipping correlation matrix: not enough valid feature columns")
+        return
+
+    corr_df = train[cols + [target]].corr()
+
+    corr_with_target = (
+        corr_df[target]
+        .drop(target)
+        .dropna()
+        .abs()
+        .sort_values(ascending=False)
+    )
+
+    if corr_with_target.empty:
+        print("  Skipping correlation matrix: all correlations are NaN/zero")
+        return
+
+    selected = corr_with_target.head(top_n).index.tolist() + [target]
     corr_mat = train[selected].corr()
 
     fig, ax = plt.subplots(figsize=(16, 14))
@@ -358,10 +370,9 @@ def plot_correlation_matrix(train: pd.DataFrame, feature_cols: list,
     sns.heatmap(
         corr_mat,
         mask=mask,
-        annot=False,
         cmap="RdBu_r",
         center=0,
-        vmin=-1, vmax=1,
+        vmin=-0.05, vmax=0.05,
         linewidths=0.3,
         ax=ax,
         cbar_kws={"shrink": 0.8}
@@ -447,7 +458,16 @@ def run_visualizations(train_raw: pd.DataFrame, train_scaled: pd.DataFrame,
     print("=" * 70)
 
     sd        = FIGURES_DIR
-    feat_cols = meta["numeric_cols"]
+    feat_cols = [
+        c for c in train_scaled.select_dtypes(include=[np.number]).columns
+        if c not in (
+            meta["id_cols"]
+            + meta["binary_cols"]
+            + ([meta["target_col"]] if meta["target_col"] else [])
+            + meta["drop_cols"]
+            + [col for col in train_scaled.columns if col.endswith("_was_null")]
+        )
+    ]
 
     plot_missing_heatmap(meta["miss_pct"], sd)
     plot_target_distribution(train_raw, meta["target_col"] or TARGET_COL, sd)
