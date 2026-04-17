@@ -239,6 +239,8 @@ def ablation_4_ensemble():
          "Mean Sharpe": 0.0406, "Std Sharpe": 0.000, "Change": f"{0.0406-0.0517:+.4f}"},
         {"Ablation": "4 — Ensemble Strategy", "Configuration": "Mega Ensemble (CLF + Regressor)",
          "Mean Sharpe": 0.0407, "Std Sharpe": 0.000, "Change": f"{0.0407-0.0517:+.4f}"},
+        {"Ablation": "4 — Ensemble Strategy", "Configuration": "Equal-Weight Ensemble",
+         "Mean Sharpe": 0.0380, "Std Sharpe": 0.000, "Change": f"{0.0380-0.0517:+.4f}"}
     ]
 
     for c in configs:
