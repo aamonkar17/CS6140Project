@@ -323,12 +323,13 @@ def block_feature_selection(train, test, min_corr=0.005, min_var=1e-6):
     print(f"      Remaining: {train.shape[1]} cols")
     return train, test
 
-
 # ALIGNMENT
 # It Ensures the training and testing share the same feature columns after the each block.
 # Any feature column present in train but missing from test is filled with 0.
 
 def cleanup_and_align(train, test):
+    train = train.fillna(0)
+    test = test.fillna(0)
     for col in LEAKAGE:
         if col in train.columns: train = train.drop(columns=[col])
         if col in test.columns:  test  = test.drop(columns=[col])
@@ -352,7 +353,7 @@ def cleanup_and_align(train, test):
 
 def main():
     print("\n" + "█" * 70)
-    print("  CS 6140 — Hull Tactical  |  Feature Engineering v2  (Aasav Suthar)")
+    print("  CS 6140 — Hull Tactical  |  Feature Engineering")
     print("█" * 70 + "\n")
 
     train, test = load_preprocessed()
@@ -375,7 +376,7 @@ def main():
     train = block_rolling(train, is_train=True)
     test  = block_rolling(test,  is_train=False)
 
-    train, test = block_feature_selection(train, test, min_corr=0.005, min_var=1e-6)
+    train, test = block_feature_selection(train, test, top_n=100)
     train, test = cleanup_and_align(train, test)
 
     train.to_csv(os.path.join(OUTPUT_DIR, "train_features.csv"), index=False)
