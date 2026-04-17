@@ -1,8 +1,7 @@
 """
 CS 6140 - Hull Tactical Market Prediction
-Advanced Models Script — v3
+Advanced Models Script — Group 15
 
-New in v3:
   1. XGBoost Classifier  — predicts market direction (+1/-1), uses
                            predictions as position sizes for Sharpe
   2. LightGBM Classifier — same approach, different base learner
@@ -78,13 +77,13 @@ def sharpe_ratio(y_true, y_pred):
     std = pnl.std()
     return float(pnl.mean() / std) if std > 1e-8 else 0.0
 
+def classification_metrics(y_true_returns, y_pred_direction):
     """
     Metrics for direction-prediction models.
     y_true_direction = sign of actual returns (ground truth direction).
     y_pred_direction = predicted direction {-1, +1}.
     Sharpe uses actual return magnitudes, not just direction.
     """
-def classification_metrics(y_true_returns, y_pred_direction):
     y_true_dir  = np.sign(y_true_returns)
     y_pred_hard = np.sign(y_pred_direction)
     acc         = accuracy_score(y_true_dir, y_pred_hard)

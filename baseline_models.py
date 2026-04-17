@@ -1,6 +1,6 @@
 """
 CS 6140 - Hull Tactical Market Prediction
-Baseline Models Script — v2  
+Baseline Models Script — Group 15 
 
 Trains four models on the engineered feature set, evaluates each using
 TimeSeriesSplit cross-validation, and outputs Kaggle-ready submission files.

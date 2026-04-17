@@ -1,6 +1,6 @@
 """
 CS 6140 - Hull Tactical Market Prediction
-Advanced Models Script — v2
+Advanced Models Script — Group 15
 
 Models:
   1. XGBoost + Optuna (100 trials, expanded search space)

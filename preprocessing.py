@@ -1,5 +1,6 @@
 """
 CS 6140 - Hull Tactical Market Prediction
+Baseline Models Script — Group 15 
 Data Preprocessing Script
   - Data acquisition & loading
   - Exploratory Data Analysis (EDA)
