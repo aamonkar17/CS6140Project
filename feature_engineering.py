@@ -223,9 +223,9 @@ def block_cross_family(df):
 
 
 # BLOCK 7 — ROLLING AND LAG FEATURES
-# Builds momentum and mean-reversion signals over windows of 3, 5, and 10
-# periods. Applied to aggregate signals only to keep dimensionality manageable.
-# mom{w} = current value minus rolling mean (deviation from recent trend).
+# Builds the momentum and mean-reversion signals over windows of 3, 5, and 10
+# periods. Applied to aggregate signals only to keep dimensionality manageable 
+# during the procedure. mom{w} = current value minus rolling mean.
 # rz{w}  = that deviation normalized by rolling std (z-score in window).
 # mom_cross = short MA minus long MA, a standard momentum crossover signal.
 # Data is sorted by date_id before rolling to preserve temporal ordering.
@@ -270,9 +270,8 @@ def block_rolling(df, is_train=True):
 
 
 # BLOCK 8 — POLYNOMIAL FEATURES
-# Squares and cubics applied selectively to the most informative signals.
-# Cubic terms capture asymmetric response (e.g. large positive vs large
-# negative signals behaving differently). Applied only to vol-adjusted
+# Squares and cubics are applied selectively to the most informative signals.
+# Cubic terms capture asymmetric response. Applied only to vol-adjusted
 # and regime signals where non-linearity is most likely to be meaningful.
 
 POLY_TARGETS = [
@@ -302,43 +301,31 @@ def block_polynomial(df):
 # ranked by model importance. This dramatically reduces noise while preserving
 # useful signal combinations.
 
-def block_feature_selection(train, test, top_n=100):
-    print("  [9] LightGBM feature selection")
+def block_feature_selection(train, test, min_corr=0.005, min_var=1e-6):
+    protected = [c for c in ID_COLS + [TARGET_COL] + LEAKAGE if c in train.columns]
+    feat_cols = [c for c in train.columns if c not in protected]
 
-    # Separate features and target
-    X = train.drop(columns=[TARGET_COL])
-    y = train[TARGET_COL]
+    variances = train[feat_cols].var()
+    low_var   = variances[variances < min_var].index.tolist()
 
-    # Train a lightweight model for feature importance estimation
-    model = lgb.LGBMRegressor(
-        n_estimators=300,
-        random_state=42,
-        n_jobs=-1,
-        verbosity=-1
-    )
-    model.fit(X, y)
+    low_corr = []
+    if TARGET_COL in train.columns:
+        corrs    = train[feat_cols].corrwith(train[TARGET_COL]).abs()
+        low_corr = corrs[corrs < min_corr].index.tolist()
 
-    # Rank features by importance
-    importances = model.feature_importances_
-    feat_names = X.columns
+    drop_cols = [c for c in set(low_var + low_corr) if c not in protected]
+    train = train.drop(columns=drop_cols)
+    test  = test.drop(columns=[c for c in drop_cols if c in test.columns])
 
-    imp_df = pd.DataFrame({
-        "feature": feat_names,
-        "importance": importances
-    }).sort_values("importance", ascending=False)
-
-    top_features = imp_df.head(top_n)["feature"].tolist()
-
-    print(f"      Keeping top {top_n} features (model-based importance)")
-
-    # Apply selection
-    train = train[top_features + [TARGET_COL]]
-    test  = test[[c for c in top_features if c in test.columns]]
-
+    print(f"  [9] Feature selection:")
+    print(f"      Dropped {len(low_var)} near-zero variance cols")
+    print(f"      Dropped {len(low_corr)} low-corr cols (|r| < {min_corr})")
+    print(f"      Remaining: {train.shape[1]} cols")
     return train, test
 
+
 # ALIGNMENT
-# Ensures train and test share the same feature columns after all blocks.
+# It Ensures the training and testing share the same feature columns after the each block.
 # Any feature column present in train but missing from test is filled with 0.
 
 def cleanup_and_align(train, test):
@@ -390,7 +377,7 @@ def main():
     train = block_rolling(train, is_train=True)
     test  = block_rolling(test,  is_train=False)
 
-    train, test = block_feature_selection(train, test, top_n=100)
+    train, test = block_feature_selection(train, test, min_corr=0.005, min_var=1e-6)
     train, test = cleanup_and_align(train, test)
 
     train.to_csv(os.path.join(OUTPUT_DIR, "train_features.csv"), index=False)

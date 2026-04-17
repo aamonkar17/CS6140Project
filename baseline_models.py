@@ -413,9 +413,7 @@ def main():
     save_submission(test_ids, ensemble_preds, "stacked")
 
     print("\n  Ensemble submission created.")
-    print("  → Pass best submission CSV + .pkl to Snehita for ensemble.\n")
 
- 
     print("  Baseline modelling v2 complete.")
 
     return df_results
