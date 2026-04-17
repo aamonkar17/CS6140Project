@@ -323,6 +323,7 @@ def block_feature_selection(train, test, min_corr=0.005, min_var=1e-6):
     print(f"      Remaining: {train.shape[1]} cols")
     return train, test
 
+
 # ALIGNMENT
 # It Ensures the training and testing share the same feature columns after the each block.
 # Any feature column present in train but missing from test is filled with 0.
@@ -376,7 +377,7 @@ def main():
     train = block_rolling(train, is_train=True)
     test  = block_rolling(test,  is_train=False)
 
-    train, test = block_feature_selection(train, test, top_n=100)
+    train, test = block_feature_selection(train, test, min_corr=0.005, min_var=1e-6)
     train, test = cleanup_and_align(train, test)
 
     train.to_csv(os.path.join(OUTPUT_DIR, "train_features.csv"), index=False)
