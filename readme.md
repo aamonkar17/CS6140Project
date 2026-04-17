@@ -27,3 +27,7 @@ All outputs are saved to the "outputs/" folder:
 - outputs/predictions/  — Results
 - outputs/models/       — saved model files
 - outputs/figures/      — plots and visualizations
+
+## Datsets
+Train.csv: https://drive.google.com/file/d/1PinXgLUh9SmL9ATDR7N2AWc8HGz-d9vK/view?usp=drive_link
+Test.csv: https://drive.google.com/file/d/16se6Rg0M9_f6OMvKqupUv7_eBSBzWMYj/view?usp=drive_link
