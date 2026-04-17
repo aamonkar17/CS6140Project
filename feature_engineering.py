@@ -12,6 +12,7 @@ import warnings
 import numpy as np
 import pandas as pd
 from scipy.stats import skew
+import lightgbm as lgb
 
 warnings.filterwarnings("ignore")
 
@@ -292,12 +293,13 @@ def block_polynomial(df):
     return df
 
 
-# BLOCK 9 — FEATURE SELECTION
-# Removes near-zero variance features (essentially constant columns) and
-# features with absolute correlation below min_corr with the target.
-# Thresholds are determined on train and applied identically to test.
-# This step is critical — without it, most engineered features add noise
-# rather than signal, as seen when Lasso selected only 1 of 183 features.
+# BLOCK 9 — LIGHTGBM-BASED FEATURE SELECTION
+# Uses a tree-based model to identify the most predictive features rather than
+# relying on simple correlation. This captures nonlinear relationships and
+# feature interactions, which are common in financial data. Instead of removing
+# features based on weak individual correlation, we keep the top N features
+# ranked by model importance. This dramatically reduces noise while preserving
+# useful signal combinations.
 
 def block_feature_selection(train, test, min_corr=0.005, min_var=1e-6):
     protected = [c for c in ID_COLS + [TARGET_COL] + LEAKAGE if c in train.columns]
