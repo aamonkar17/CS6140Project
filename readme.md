@@ -34,7 +34,7 @@ Train.csv: https://drive.google.com/file/d/1PinXgLUh9SmL9ATDR7N2AWc8HGz-d9vK/vie
 Test.csv: https://drive.google.com/file/d/16se6Rg0M9_f6OMvKqupUv7_eBSBzWMYj/view?usp=drive_link
 
 ## Video
-Video: 
+Video: https://drive.google.com/file/d/1iPUl5YPnD-TPP3sPBqCKYqqKwZBA0GHg/view?usp=sharing
 
 ## Github
 Github link: https://github.com/aamonkar17/CS6140Project
