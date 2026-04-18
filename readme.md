@@ -17,8 +17,11 @@ python baseline_models.py
 Step 4 — Advanced Models (Regression):
 python advanced_models_regression.py
 
-Step 4 — Advanced Models (Classification):
+Step 5 — Advanced Models (Classification):
 python advanced_models_classification.py
+
+Step 6 — Ablation Study:
+python ablation_study.py
 
 NOTE: Run Step 4 before Step 5 — Step 5 loads the saved XGBoost model from Step 4.
 
